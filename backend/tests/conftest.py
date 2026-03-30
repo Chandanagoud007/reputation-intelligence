@@ -4,6 +4,13 @@ Pytest configuration and shared fixtures.
 import asyncio
 import pytest
 from httpx import AsyncClient, ASGITransport
+from app.models.tenant import Tenant  # noqa
+from app.models.brand import Brand  # noqa
+from app.models.region import Region  # noqa
+from app.models.location import Location  # noqa
+from app.models.user import User  # noqa
+from app.models.connector import Connector  # noqa
+from app.models.alert_rule import AlertRule  # noqa
 
 from app.main import app
 
