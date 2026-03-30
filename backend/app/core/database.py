@@ -32,7 +32,15 @@ class Base(DeclarativeBase):
 
 
 async def init_postgres() -> None:
-    print(f"Connecting to PostgreSQL at {settings.DATABASE_URL[:40]}...")
+    print("Connecting to PostgreSQL...")
+    # Import all models so SQLAlchemy registers them
+    from app.models.tenant import Tenant  # noqa
+    from app.models.brand import Brand  # noqa
+    from app.models.region import Region  # noqa
+    from app.models.location import Location  # noqa
+    from app.models.user import User  # noqa
+    from app.models.connector import Connector  # noqa
+    from app.models.alert_rule import AlertRule  # noqa
     async with engine.connect() as conn:
         from sqlalchemy import text
         await conn.execute(text("SELECT 1"))
