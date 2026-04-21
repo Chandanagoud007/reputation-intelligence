@@ -1,0 +1,19 @@
+# terraform.tfvars.example  ← commit this to Git
+
+aws_region  = "us-east-1"
+environment = "staging"
+
+vpc_id             = "vpc-xxxxxxxxxxxxxxxxx"
+private_subnet_ids = ["subnet-xxxxxxxx", "subnet-yyyyyyyy"]
+public_subnet_ids  = ["subnet-aaaaaaaa", "subnet-bbbbbbbb"]
+subnet_ids         = ["subnet-xxxxxxxx", "subnet-yyyyyyyy"]
+
+db_name     = "reputation_db"
+db_username = "repuser"
+db_password = "REPLACE_ME"
+db_url      = "postgresql://repuser:REPLACE_ME@your-rds-endpoint:5432/reputation_db"
+
+redis_url = ""
+
+rds_instance_class = "db.t3.micro"
+redis_node_type    = "cache.t3.micro"
