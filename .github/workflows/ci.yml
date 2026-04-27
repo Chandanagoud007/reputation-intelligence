@@ -223,15 +223,7 @@ jobs:
         aws-region: us-east-1
 
     - name: Force new ECS deployment
-      run: |
-        aws ecs update-service \
-          --cluster ${{ env.ECS_CLUSTER }} \
-          --service ${{ env.ECS_SERVICE }} \
-          --force-new-deployment
+      run: aws ecs update-service --cluster reputation-staging --service reputation-staging-backend --force-new-deployment
 
     - name: Wait for deployment to stabilize
-      run: |
-        aws ecs wait services-stable \
-          --cluster ${{ env.ECS_CLUSTER }} \
-          --services ${{ env.ECS_SERVICE }}
-        echo "Deployment stable"
+      run: aws ecs wait services-stable --cluster reputation-staging --services reputation-staging-backend
