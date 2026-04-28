@@ -22,16 +22,29 @@ log = structlog.get_logger()
 async def lifespan(app: FastAPI):
     """Manage startup and shutdown events."""
     log.info("Starting Reputation Intelligence Platform", version=settings.APP_VERSION)
+    try:
+        await init_postgres()
+        log.info("PostgreSQL connected")
+    except Exception as e:
+        log.error("PostgreSQL connection failed", error=str(e))
+        raise
 
-    # Initialize all database connections
-    await init_postgres()
-    await init_mongo()
-    await init_redis()
+    try:
+        await init_mongo()
+        log.info("MongoDB connected")
+    except Exception as e:
+        log.error("MongoDB connection failed", error=str(e))
+        raise
+
+    try:
+        await init_redis()
+        log.info("Redis connected")
+    except Exception as e:
+        log.error("Redis connection failed", error=str(e))
+        raise
 
     log.info("All database connections established")
     yield
-
-    # Graceful shutdown
     await close_connections()
     log.info("Shutdown complete")
 
