@@ -77,6 +77,11 @@ def create_app() -> FastAPI:
 
     # ─── Prometheus Metrics ───────────────────────────────────────
     Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+    
+    # ─── Root health check (for ALB) ──────────────────────────────
+    @app.get("/health")
+    async def health():
+        return {"status": "ok"}
 
     return app
 
