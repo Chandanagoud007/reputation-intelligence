@@ -1,4 +1,4 @@
-"""Review query endpoints."""
+﻿"""Review query endpoints."""
 import uuid
 from datetime import datetime
 from typing import Any
@@ -41,3 +41,29 @@ def _json_safe(value: Any) -> Any:
     if isinstance(value, dict):
         return {key: _json_safe(item) for key, item in value.items()}
     return value
+
+
+from fastapi.responses import Response
+from app.services.analytics.excel_export_service import excel_export_service
+
+
+@router.get("/export/excel")
+async def export_reviews_excel(
+    location_id: uuid.UUID | None = None,
+    platform: str | None = None,
+    days: int = Query(default=30, ge=1, le=365),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
+):
+    """Download reviews as a formatted Excel report."""
+    excel_bytes = await excel_export_service.generate_report(
+        tenant_id=tenant_id,
+        location_id=location_id,
+        platform=platform,
+        days=days,
+    )
+    filename = f"reputation_report_{datetime.utcnow().strftime('%Y%m%d')}.xlsx"
+    return Response(
+        content=excel_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
