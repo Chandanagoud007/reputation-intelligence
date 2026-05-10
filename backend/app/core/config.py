@@ -57,7 +57,13 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
     HUGGINGFACE_API_KEY: str = ""
-    SENTIMENT_PROVIDER: Literal["aws_comprehend", "openai", "anthropic", "huggingface"] = "aws_comprehend"
+    SENTIMENT_PROVIDER: Literal[
+        "aws_comprehend",
+        "openai",
+        "anthropic",
+        "huggingface",
+        "vader_local",
+    ] = "vader_local"
     AI_INSIGHTS_PROVIDER: Literal["openai", "anthropic"] = "anthropic"
 
     # ─── Review Platform Connectors ───────────────────────────────

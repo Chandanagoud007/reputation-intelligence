@@ -35,7 +35,7 @@ class Location(Base, UUIDMixin, TimeStampMixin):
     phone: Mapped[str] = mapped_column(String(30), nullable=True)
     website: Mapped[str] = mapped_column(String(500), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    extra_data: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    extra_data: Mapped[dict] = mapped_column("metadata", JSONB, default=dict, nullable=False)
 
     # Relationships
     region: Mapped["Region"] = relationship("Region", back_populates="locations")

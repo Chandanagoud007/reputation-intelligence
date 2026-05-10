@@ -29,7 +29,7 @@ class Region(Base, UUIDMixin, TimeStampMixin):
     slug: Mapped[str] = mapped_column(String(100), nullable=False)
     country: Mapped[str] = mapped_column(String(100), default="US", nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    extra_data: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    extra_data: Mapped[dict] = mapped_column("metadata", JSONB, default=dict, nullable=False)
 
     # Relationships
     brand: Mapped["Brand"] = relationship("Brand", back_populates="regions")

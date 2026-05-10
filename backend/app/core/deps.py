@@ -27,8 +27,12 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+    token = credentials.credentials
+    if token.lower().startswith("bearer "):
+        token = token.split(" ", 1)[1]
+
     try:
-        payload = decode_token(credentials.credentials)
+        payload = decode_token(token)
     except ValueError:
         raise credentials_exception
 
@@ -48,7 +52,7 @@ async def get_current_user(
 
     # Check token blacklist in Redis
     redis = get_redis()
-    is_blacklisted = await redis.get(f"blacklist:{credentials.credentials}")
+    is_blacklisted = await redis.get(f"blacklist:{token}")
     if is_blacklisted:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

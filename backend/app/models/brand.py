@@ -28,7 +28,7 @@ class Brand(Base, UUIDMixin, TimeStampMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(100), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    extra_data: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    extra_data: Mapped[dict] = mapped_column("metadata", JSONB, default=dict, nullable=False)
 
     # Relationships
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="brands")
