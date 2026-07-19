@@ -1,0 +1,295 @@
+version: "3.9"
+
+# =============================================================================
+# RIP Phase 2 — Local Development Stack
+# Zero-cost, runs entirely on your machine.
+# All 3 devs use this before any AWS infra is provisioned.
+# =============================================================================
+
+networks:
+  rip:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  zookeeper_data:
+  kafka_data:
+  opensearch_data:
+  clickhouse_data:
+  qdrant_data:
+  minio_data:
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # POSTGRESQL — Multi-tenant schema (carries over from Phase 1)
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: rip_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: rip_db
+      POSTGRES_USER: rip_user
+      POSTGRES_PASSWORD: rip_pass
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init/postgres:/docker-entrypoint-initdb.d
+    networks:
+      - rip
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rip_user -d rip_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # REDIS — Tenant quota checks + alert cooldown TTL (carries over from P1)
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: rip_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - rip
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # ZOOKEEPER — Required by Kafka (self-hosted, free)
+  # ---------------------------------------------------------------------------
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: rip_zookeeper
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+    networks:
+      - rip
+    healthcheck:
+      test: ["CMD-SHELL", "echo ruok | nc localhost 2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # KAFKA — The spine. All workers communicate through here.
+  # Topics are auto-created on first publish (dev only).
+  # ---------------------------------------------------------------------------
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: rip_kafka
+    restart: unless-stopped
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 168        # 7 days
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - rip
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  # ---------------------------------------------------------------------------
+  # KAFKA UI — Web UI to inspect topics, messages, consumer groups.
+  # Hit http://localhost:8080 in your browser.
+  # ---------------------------------------------------------------------------
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: rip_kafka_ui
+    restart: unless-stopped
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_CLUSTERS_0_NAME: rip-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    ports:
+      - "8080:8080"
+    networks:
+      - rip
+
+  # ---------------------------------------------------------------------------
+  # SCHEMA REGISTRY — Enforces canonical message schemas across all workers.
+  # Critical: defines the contract between producers and consumers.
+  # ---------------------------------------------------------------------------
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.5.0
+    container_name: rip_schema_registry
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:29092
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+    ports:
+      - "8081:8081"
+    networks:
+      - rip
+
+  # ---------------------------------------------------------------------------
+  # OPENSEARCH — Full-text search index for the frontend dashboard
+  # ---------------------------------------------------------------------------
+  opensearch:
+    image: opensearchproject/opensearch:2.11.0
+    container_name: rip_opensearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=RipAdmin@123!   # change in prod
+      - plugins.security.disabled=true                    # dev only
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    networks:
+      - rip
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+
+  # ---------------------------------------------------------------------------
+  # OPENSEARCH DASHBOARDS — Kibana-equivalent UI for OpenSearch.
+  # Hit http://localhost:5601
+  # ---------------------------------------------------------------------------
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.11.0
+    container_name: rip_opensearch_dashboards
+    restart: unless-stopped
+    depends_on:
+      - opensearch
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
+    ports:
+      - "5601:5601"
+    networks:
+      - rip
+
+  # ---------------------------------------------------------------------------
+  # CLICKHOUSE — Analytics time-series store for reputation score history
+  # ---------------------------------------------------------------------------
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.8
+    container_name: rip_clickhouse
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: rip_analytics
+      CLICKHOUSE_USER: rip_user
+      CLICKHOUSE_PASSWORD: rip_pass
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ports:
+      - "8123:8123"   # HTTP interface
+      - "9000:9000"   # Native interface
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./init/clickhouse:/docker-entrypoint-initdb.d
+    networks:
+      - rip
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # QDRANT — Vector database for semantic search on reviews
+  # ---------------------------------------------------------------------------
+  qdrant:
+    image: qdrant/qdrant:v1.7.3
+    container_name: rip_qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"   # REST API
+      - "6334:6334"   # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - rip
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:6333/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  minio:
+    image: minio/minio:latest
+    container_name: rip_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: rip_user
+      MINIO_ROOT_PASSWORD: rip_pass_minio
+    ports:
+      - "9002:9000"   # S3 API (9000 taken by ClickHouse)
+      - "9001:9001"   # MinIO Console UI
+    volumes:
+      - minio_data:/data
+    networks:
+      - rip
+
+  # ---------------------------------------------------------------------------
+  # FASTAPI GATEWAY — Your existing P1 app, extended with Kafka producer
+  # Mount your actual source code below.
+  # ---------------------------------------------------------------------------
+  # gateway:
+    # image: python:3.11-slim
+    # container_name: rip_gateway
+    # restart: unless-stopped
+    # working_dir: /app
+    # volumes:
+    #   - C:\Users\chand\OneDrive\Desktop\rip:/app        # points to your rip project root
+    # command: >
+    #   sh -c "pip install -r requirements.txt -q &&
+    #          uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    # ports:
+    #   - "8001:8000"
+    # depends_on:
+    #   postgres:
+    #     condition: service_healthy
+    #   redis:
+    #     condition: service_healthy
+    #   kafka:
+    #     condition: service_healthy
+    # environment:
+    #   DATABASE_URL: postgresql://rip_user:rip_pass@postgres:5432/rip_db
+    #   REDIS_URL: redis://redis:6379/0
+    #   KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    #   SCHEMA_REGISTRY_URL: http://schema-registry:8081
+    # networks:
+    #   - rip

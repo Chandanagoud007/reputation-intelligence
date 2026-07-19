@@ -1,10 +1,11 @@
-﻿"""Alert rule endpoints."""
+"""Alert rule endpoints."""
 import uuid
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -101,7 +102,7 @@ async def list_triggered_alerts(
     limit: int = 50,
     tenant_id: uuid.UUID = Depends(get_tenant_id),
 ):
-    """List triggered alerts for the current tenant."""
+    """List triggered alerts for the current tenant (Phase 1 — MongoDB-backed)."""
     alerts = await alert_service.list_triggered_alerts(
         tenant_id=tenant_id,
         location_id=location_id,
@@ -137,3 +138,48 @@ async def evaluate_alerts(
         platform=platform,
     )
     return {"triggered": len(triggered), "alerts": triggered}
+
+
+# ── Phase 2: dashboard alert feed ─────────────────────────────────────────────
+@router.get("")
+@router.get("/")
+async def list_dashboard_alerts(
+    limit: int = Query(default=50, ge=1, le=200),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Recent alerts fired by the Phase 2 alert engine.
+    Reads from alerts.alert_log — written directly by alert_engine.py
+    with full context (location, severity, risk, trigger values).
+    Powers the dashboard's Alert Inbox tab.
+    """
+    result = await db.execute(
+        text("""
+            SELECT
+                alert_id, rule_name, severity, location_name, brand_name,
+                risk_level, risk_flags, topics, trigger_values, fired_at
+            FROM alerts.alert_log
+            WHERE tenant_id = :tenant_id
+            ORDER BY fired_at DESC
+            LIMIT :limit
+        """),
+        {"tenant_id": str(tenant_id), "limit": limit},
+    )
+    rows = result.fetchall()
+
+    return [
+        {
+            "alert_id":       row.alert_id,
+            "rule_name":      row.rule_name,
+            "severity":       row.severity,
+            "location_name":  row.location_name,
+            "brand_name":     row.brand_name,
+            "risk_level":     row.risk_level,
+            "risk_flags":     row.risk_flags or [],
+            "topics":         row.topics or [],
+            "trigger_values": row.trigger_values or {},
+            "fired_at":       row.fired_at.isoformat() if row.fired_at else None,
+        }
+        for row in rows
+    ]

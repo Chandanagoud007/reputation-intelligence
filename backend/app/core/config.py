@@ -42,16 +42,37 @@ class Settings(BaseSettings):
     REDIS_URL: str
     CACHE_TTL_SECONDS: int = 300
 
-    # ─── RabbitMQ ─────────────────────────────────────────────────
-    RABBITMQ_URL: str
+    # ─── Kafka ────────────────────────────────────────────────────
+    KAFKA_BOOTSTRAP_SERVERS: str = "localhost:9092"
+    
+    # OpenSearch
+    OPENSEARCH_HOST: str = "localhost"
+    OPENSEARCH_PORT: int = 9200
+
+    # ClickHouse
+    CLICKHOUSE_HOST: str = "localhost"
+    CLICKHOUSE_PORT: int = 8123
+    CLICKHOUSE_USER: str = "rip_user"
+    CLICKHOUSE_PASSWORD: str = ""
+    CLICKHOUSE_DB: str = "rip_analytics"
+
+    # Qdrant
+    QDRANT_HOST: str = "localhost"
+    QDRANT_PORT: int = 6333
+
+    # MinIO
+    MINIO_ENDPOINT: str = "localhost:9002"
+    MINIO_ACCESS_KEY: str = "rip_user"
+    MINIO_SECRET_KEY: str = "rip_pass_minio"
+    MINIO_BUCKET: str = "rip-raw-reviews"
 
     # ─── AWS ──────────────────────────────────────────────────────
-    AWS_REGION: str = "us-east-1"
-    AWS_ACCESS_KEY_ID: str
-    AWS_SECRET_ACCESS_KEY: str
-    AWS_S3_BUCKET: str
+    AWS_REGION: str = ""
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: str = ""
+    AWS_S3_BUCKET: str = ""
     AWS_COMPREHEND_REGION: str = "us-east-1"
-    AWS_SES_SENDER_EMAIL: str
+    AWS_SES_SENDER_EMAIL: str = ""
 
     # ─── AI / NLP ─────────────────────────────────────────────────
     OPENAI_API_KEY: str = ""

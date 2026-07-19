@@ -1,12 +1,25 @@
-import React from "react";
+import React, { useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import Dashboard from "./pages/Dashboard";
+import Login from "./pages/Login";
+import { isAuthenticated } from "./api/auth";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 5000,
+    },
+  },
+});
 
 function App() {
+  const [authed, setAuthed] = useState(isAuthenticated());
+
   return (
-    <div style={{ fontFamily: "sans-serif", padding: "40px", textAlign: "center" }}>
-      <h1>Reputation Intelligence Platform</h1>
-      <p>Frontend is running ✅</p>
-      <p>Backend API: <a href="http://localhost:8000/api/docs" target="_blank">http://localhost:8000/api/docs</a></p>
-    </div>
+    <QueryClientProvider client={queryClient}>
+      {authed ? <Dashboard /> : <Login onSuccess={() => setAuthed(true)} />}
+    </QueryClientProvider>
   );
 }
 

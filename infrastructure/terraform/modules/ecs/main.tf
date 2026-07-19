@@ -6,6 +6,7 @@ variable "private_subnet_ids" { type = list(string) }
 variable "aws_region" {}
 variable "db_url" { sensitive = true }
 variable "redis_url" {}
+variable "target_group_arn" { default = "" }
 
 # ─── ECS Cluster ──────────────────────────────────────────────────────────────
 resource "aws_ecs_cluster" "main" {
@@ -109,9 +110,26 @@ resource "aws_ecs_task_definition" "backend" {
       protocol      = "tcp"
     }]
     environment = [
-      { name = "APP_ENV",       value = var.environment },
-      { name = "DATABASE_URL",  value = var.db_url },
-      { name = "REDIS_URL",     value = var.redis_url },
+      { name = "APP_ENV",                value = var.environment },
+      { name = "DEBUG",                  value = "false" },
+      { name = "SECRET_KEY",             value = var.secret_key },
+      { name = "JWT_SECRET_KEY",         value = var.jwt_secret_key },
+      { name = "DATABASE_URL",           value = var.db_url },
+      { name = "POSTGRES_HOST",          value = var.postgres_host },
+      { name = "POSTGRES_PORT",          value = "5432" },
+      { name = "POSTGRES_USER",          value = var.postgres_user },
+      { name = "POSTGRES_PASSWORD",      value = var.postgres_password },
+      { name = "POSTGRES_DB",            value = var.postgres_db },
+      { name = "MONGO_URI",              value = var.mongo_uri },
+      { name = "MONGO_DB",               value = "reputation_reviews" },
+      { name = "REDIS_URL",              value = var.redis_url },
+      { name = "RABBITMQ_URL",           value = var.rabbitmq_url },
+      { name = "AWS_REGION",             value = var.aws_region },
+      { name = "AWS_ACCESS_KEY_ID",      value = var.app_aws_access_key_id },
+      { name = "AWS_SECRET_ACCESS_KEY",  value = var.app_aws_secret_access_key },
+      { name = "AWS_S3_BUCKET",          value = var.s3_bucket },
+      { name = "AWS_SES_SENDER_EMAIL",   value = var.ses_sender_email },
+      { name = "ALLOWED_HOSTS",          value = var.alb_dns_name },
     ]
     logConfiguration = {
       logDriver = "awslogs"
@@ -138,6 +156,15 @@ resource "aws_ecs_service" "backend" {
     assign_public_ip = false
   }
 
+  dynamic "load_balancer" {
+    for_each = var.target_group_arn != "" ? [1] : []
+    content {
+      target_group_arn = var.target_group_arn
+      container_name   = "backend"
+      container_port   = 8000
+    }
+  }
+
   lifecycle {
     ignore_changes = [desired_count]
   }
@@ -147,3 +174,20 @@ resource "aws_ecs_service" "backend" {
 output "cluster_name" {
   value = aws_ecs_cluster.main.name
 }
+output "ecs_security_group_id" {
+  value = aws_security_group.ecs.id
+}
+
+variable "secret_key" { sensitive = true }
+variable "jwt_secret_key" { sensitive = true }
+variable "postgres_host" {}
+variable "postgres_user" {}
+variable "postgres_password" { sensitive = true }
+variable "postgres_db" {}
+variable "mongo_uri" { sensitive = true }
+variable "rabbitmq_url" { default = "amqp://guest:guest@localhost:5672/" }
+variable "app_aws_access_key_id" { sensitive = true }
+variable "app_aws_secret_access_key" { sensitive = true }
+variable "s3_bucket" {}
+variable "ses_sender_email" { default = "" }
+variable "alb_dns_name" { default = "" }

@@ -2,6 +2,8 @@
 Pytest configuration and shared fixtures.
 """
 import asyncio
+import uuid
+
 import pytest
 from httpx import AsyncClient, ASGITransport
 from app.models.tenant import Tenant  # noqa
@@ -34,19 +36,20 @@ async def client():
 
 @pytest.fixture
 def test_tenant_data():
+    suffix = uuid.uuid4().hex[:8]
     return {
         "tenant_name": "Test Corp",
-        "tenant_slug": "test-corp",
-        "email": "admin@testcorp.com",
+        "tenant_slug": f"test-corp-{suffix}",
+        "email": f"admin-{suffix}@testcorp.com",
         "password": "TestPass123!",
         "full_name": "Test Admin"
     }
 
 
 @pytest.fixture
-def test_login_data():
+def test_login_data(test_tenant_data):
     return {
-        "email": "admin@testcorp.com",
+        "email": test_tenant_data["email"],
         "password": "TestPass123!",
-        "tenant_slug": "test-corp"
+        "tenant_slug": test_tenant_data["tenant_slug"]
     }

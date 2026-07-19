@@ -64,18 +64,31 @@ module "elasticache" {
 
 # ─── ECS Cluster ──────────────────────────────────────────────────────────────
 module "ecs" {
-  source = "./modules/ecs"
-
-  environment       = var.environment
-  vpc_id            = module.vpc.vpc_id
-  public_subnet_ids = module.vpc.public_subnet_ids
+  source             = "./modules/ecs"
+  environment        = var.environment
+  vpc_id             = module.vpc.vpc_id
+  public_subnet_ids  = module.vpc.public_subnet_ids
   private_subnet_ids = module.vpc.private_subnet_ids
-  aws_region        = var.aws_region
-  db_url            = module.rds.db_url
-  redis_url         = module.elasticache.redis_url
-}
+  aws_region         = var.aws_region
+  target_group_arn   = module.alb.target_group_arn
 
-# ─── S3 Bucket ────────────────────────────────────────────────────────────────
+  # App config
+  secret_key         = var.secret_key
+  jwt_secret_key     = var.jwt_secret_key
+  db_url             = module.rds.db_url
+  postgres_host      = var.postgres_host
+  postgres_user      = var.db_username
+  postgres_password  = var.db_password
+  postgres_db        = var.db_name
+  mongo_uri          = var.mongo_uri
+  rabbitmq_url       = var.rabbitmq_url
+  redis_url          = module.elasticache.redis_url
+  app_aws_access_key_id     = var.app_aws_access_key_id
+  app_aws_secret_access_key = var.app_aws_secret_access_key
+  s3_bucket          = aws_s3_bucket.assets.bucket
+  ses_sender_email   = var.ses_sender_email
+  alb_dns_name       = module.alb.alb_dns_name
+}# ─── S3 Bucket ────────────────────────────────────────────────────────────────
 resource "aws_s3_bucket" "assets" {
   bucket = "reputation-intelligence-assets-${var.environment}"
 }
@@ -85,4 +98,13 @@ resource "aws_s3_bucket_versioning" "assets" {
   versioning_configuration {
     status = "Enabled"
   }
+}
+
+# ─── ALB ──────────────────────────────────────────────────────────────────────
+module "alb" {
+  source                = "./modules/alb"
+  environment           = var.environment
+  vpc_id                = module.vpc.vpc_id
+  public_subnet_ids     = module.vpc.public_subnet_ids
+  ecs_security_group_id = module.ecs.ecs_security_group_id
 }

@@ -22,3 +22,8 @@ output "ecs_cluster_name" {
   description = "ECS cluster name"
   value       = module.ecs.cluster_name
 }
+
+output "alb_dns_name" {
+  description = "ALB public DNS — use this as your API endpoint"
+  value       = module.alb.alb_dns_name
+}

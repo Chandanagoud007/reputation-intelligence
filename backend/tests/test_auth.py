@@ -39,9 +39,9 @@ async def test_login_success(client: AsyncClient, test_tenant_data, test_login_d
 async def test_login_wrong_password(client: AsyncClient, test_tenant_data):
     await client.post("/api/v1/auth/register", json=test_tenant_data)
     response = await client.post("/api/v1/auth/login", json={
-        "email": "admin@testcorp.com",
+        "email": test_tenant_data["email"],
         "password": "WrongPassword!",
-        "tenant_slug": "test-corp"
+        "tenant_slug": test_tenant_data["tenant_slug"]
     })
     assert response.status_code == 401
 

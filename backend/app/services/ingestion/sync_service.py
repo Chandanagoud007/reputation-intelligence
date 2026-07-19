@@ -12,7 +12,7 @@ from app.models.brand import Brand
 from app.models.connector import Connector
 from app.models.location import Location
 from app.models.region import Region
-from app.services.ingestion.queue import publish_sync_job
+from app.services.kafka_producer import publish_reviews_batch
 from app.services.ingestion.review_store import review_store
 from app.services.nlp.sentiment import sentiment_service
 
@@ -56,14 +56,10 @@ class IngestionSyncService:
         return len(due)
 
     async def enqueue_connector(self, connector, tenant_id):
-        await publish_sync_job({
-            "connector_id": str(connector.id),
-            "tenant_id": str(tenant_id),
-            "location_id": str(connector.location_id),
-            "platform": connector.platform,
-            "external_id": connector.external_id,
-            "last_synced": connector.last_synced.isoformat() if connector.last_synced else None,
-        })
+    # Phase 2: connectors publish directly to Kafka via ConnectorBase.sync()
+    # This method is kept for backward compatibility but is now a no-op.
+    # Actual Kafka publishing happens in ConnectorBase.sync() → kafka_producer.publish_review()
+        pass
 
     async def sync_connector(self, db, payload):
         connector_id = uuid.UUID(payload["connector_id"])

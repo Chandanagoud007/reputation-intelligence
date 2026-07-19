@@ -13,6 +13,9 @@ httpx==0.27.0
 aiohttp==3.9.5
 anyio==4.4.0
 
+# Kafka
+aiokafka==0.10.0
+
 # ─── Databases ───────────────────────────────────────────────────
 # PostgreSQL
 asyncpg==0.29.0
@@ -28,6 +31,11 @@ beanie==1.26.0          # ODM for MongoDB
 # Redis
 redis[hiredis]==5.0.4
 aioredis==2.0.1
+
+#MinIO
+miniopy-async==1.20.0
+
+emoji==2.11.1
 
 # ─── Message Queue ───────────────────────────────────────────────
 aio-pika==9.4.1          # Async RabbitMQ
@@ -54,6 +62,11 @@ numpy==1.26.4
 pandas==2.2.2
 nltk==3.8.1
 spacy
+langdetect==1.0.9
+transformers==4.41.0
+vaderSentiment==3.3.1
+anthropic==0.28.0
+pyyaml==6.0.1
 
 # Sentiment / emotion specific
 textblob==0.18.0
@@ -83,6 +96,14 @@ python-json-logger==2.0.7
 # ─── Notifications ───────────────────────────────────────────────
 sendgrid==6.11.0
 twilio==9.1.0
+
+
+#search indexer
+opensearch-py==2.4.2
+
+#vector indexer
+sentence-transformers==3.0.1
+qdrant-client==1.9.1
 
 # ─── Utilities ───────────────────────────────────────────────────
 python-slugify==8.0.4

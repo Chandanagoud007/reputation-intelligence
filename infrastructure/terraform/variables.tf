@@ -63,3 +63,51 @@ variable "redis_node_type" {
   type        = string
   default     = "cache.t3.micro"
 }
+
+variable "secret_key" {
+  description = "Django/FastAPI secret key"
+  type        = string
+  sensitive   = true
+}
+
+variable "jwt_secret_key" {
+  description = "JWT signing secret"
+  type        = string
+  sensitive   = true
+}
+
+variable "postgres_host" {
+  description = "PostgreSQL host"
+  type        = string
+  default     = "reputation-staging-postgres.c85ogm40ul3d.us-east-1.rds.amazonaws.com"
+}
+
+variable "mongo_uri" {
+  description = "MongoDB connection URI"
+  type        = string
+  sensitive   = true
+}
+
+variable "rabbitmq_url" {
+  description = "RabbitMQ connection URL"
+  type        = string
+  default     = "amqp://guest:guest@localhost:5672/"
+}
+
+variable "app_aws_access_key_id" {
+  description = "AWS access key for app use"
+  type        = string
+  sensitive   = true
+}
+
+variable "app_aws_secret_access_key" {
+  description = "AWS secret key for app use"
+  type        = string
+  sensitive   = true
+}
+
+variable "ses_sender_email" {
+  description = "SES sender email address"
+  type        = string
+  default     = ""
+}

@@ -41,6 +41,7 @@ async def init_postgres() -> None:
     from app.models.user import User  # noqa
     from app.models.connector import Connector  # noqa
     from app.models.alert_rule import AlertRule  # noqa
+    from app.models.reputation_score import ReputationScore  # noqa
     async with engine.connect() as conn:
         from sqlalchemy import text
         await conn.execute(text("SELECT 1"))
@@ -66,10 +67,13 @@ _mongo_client: AsyncIOMotorClient | None = None
 
 async def init_mongo() -> None:
     global _mongo_client
-    print(f"Connecting to MongoDB...")
-    _mongo_client = AsyncIOMotorClient(settings.MONGO_URI)
-    await _mongo_client.admin.command("ping")
-    print("MongoDB connection established")
+    try:
+        _mongo_client = AsyncIOMotorClient(settings.MONGO_URI)
+        await _mongo_client.admin.command("ping")
+        print("MongoDB connection established")
+    except Exception as e:
+        print(f"MongoDB not available, skipping: {e}")
+        _mongo_client = None
 
 
 def get_mongo_db():

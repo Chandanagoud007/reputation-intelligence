@@ -1,6 +1,6 @@
 ﻿"""Analytics endpoints."""
 import uuid
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Path
 from app.core.deps import get_tenant_id
 from app.services.analytics.analytics_service import analytics_service
 from app.services.analytics.anomaly_service import anomaly_service
@@ -106,3 +106,47 @@ async def get_prescriptive(
         "improvements": improvements,
         "strengths": strengths,
     }
+
+
+@router.get("/trend/{location_id}")
+async def get_location_trend(
+    location_id: uuid.UUID,
+    days: int = Query(default=30, ge=1, le=365),
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
+):
+    """
+    Score history for a single location from ClickHouse.
+    Powers the dashboard's trend chart when a location card is clicked.
+    """
+    import clickhouse_connect
+
+    try:
+        client = clickhouse_connect.get_client(
+            host="localhost", port=8123,
+            username="rip_user", password="rip_pass",
+            database="rip_analytics",
+        )
+        result = client.query(f"""
+            SELECT
+                toDate(calculated_at) AS date,
+                avg(score) AS score,
+                max(review_count) AS review_count,
+                avg(sentiment_avg) AS sentiment_avg
+            FROM rip_analytics.reputation_scores
+            WHERE location_id = '{location_id}'
+              AND calculated_at >= now() - INTERVAL {days} DAY
+            GROUP BY date
+            ORDER BY date ASC
+        """)
+
+        return [
+            {
+                "date": str(row[0]),
+                "score": round(row[1], 2),
+                "review_count": row[2],
+                "sentiment_avg": round(row[3], 3),
+            }
+            for row in result.result_rows
+        ]
+    except Exception:
+        return []

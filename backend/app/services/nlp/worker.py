@@ -6,7 +6,7 @@ Run with: python -m app.services.nlp.worker
 import asyncio
 import json
 
-import aio_pika
+# import aio_pika
 import structlog
 
 from app.core.config import settings
