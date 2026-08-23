@@ -13,33 +13,27 @@ httpx==0.27.0
 aiohttp==3.9.5
 anyio==4.4.0
 
-# Kafka
+# ─── Kafka ───────────────────────────────────────────────────────
 aiokafka==0.10.0
 
 # ─── Databases ───────────────────────────────────────────────────
-# PostgreSQL
 asyncpg==0.29.0
 sqlalchemy[asyncio]==2.0.30
 alembic==1.13.1
 psycopg2-binary==2.9.9
 
-# MongoDB
 motor==3.4.0
 pymongo==4.7.2
-beanie==1.26.0          # ODM for MongoDB
+beanie==1.26.0
 
-# Redis
 redis[hiredis]==5.0.4
-aioredis==2.0.1
 
-#MinIO
 miniopy-async==1.20.0
+clickhouse-connect
 
-emoji==2.11.1
-
-# ─── Message Queue ───────────────────────────────────────────────
-aio-pika==9.4.1          # Async RabbitMQ
-celery[redis]==5.4.0     # Task queue
+# ─── Message Queue (legacy — kept for backward compat) ───────────
+aio-pika==9.4.1
+celery[redis]==5.4.0
 kombu==5.3.5
 
 # ─── Authentication & Security ───────────────────────────────────
@@ -55,22 +49,24 @@ botocore==1.34.100
 
 # ─── AI / NLP ────────────────────────────────────────────────────
 openai==1.30.1
-anthropic==0.26.1
+anthropic==0.28.0
 transformers==4.41.1
+torch
 scikit-learn==1.5.0
 numpy==1.26.4
 pandas==2.2.2
 nltk==3.8.1
 spacy
 langdetect==1.0.9
-transformers==4.41.1
-vaderSentiment==3.3.1
-anthropic==0.28.0
-pyyaml==6.0.1
-
-# Sentiment / emotion specific
-textblob==0.18.0
 vaderSentiment==3.3.2
+textblob==0.18.0
+pyyaml==6.0.1
+emoji==2.11.1
+
+# ─── Search & Vector ─────────────────────────────────────────────
+opensearch-py==2.4.2
+sentence-transformers==3.0.1
+qdrant-client==1.9.1
 
 # ─── Data Validation ─────────────────────────────────────────────
 pydantic==2.7.1
@@ -79,13 +75,14 @@ email-validator==2.1.1
 
 # ─── Caching & Performance ───────────────────────────────────────
 cachetools==5.3.3
-orjson==3.10.3           # Fast JSON
+orjson==3.10.3
 
 # ─── Review Platform SDKs ────────────────────────────────────────
 google-auth==2.29.0
 google-auth-oauthlib==1.2.0
 google-api-python-client==2.130.0
 requests-oauthlib==1.3.1
+google-play-scraper==1.2.7
 
 # ─── Monitoring & Logging ────────────────────────────────────────
 sentry-sdk[fastapi]==2.3.1
@@ -97,28 +94,16 @@ python-json-logger==2.0.7
 sendgrid==6.11.0
 twilio==9.1.0
 
-
-#search indexer
-opensearch-py==2.4.2
-
-#vector indexer
-sentence-transformers==3.0.1
-qdrant-client==1.9.1
-
 # ─── Utilities ───────────────────────────────────────────────────
 python-slugify==8.0.4
-arrow==1.3.0              # Date handling
-tenacity==8.3.0           # Retry logic
-rich==13.7.1              # Dev console output
+arrow==1.3.0
+tenacity==8.3.0
+rich==13.7.1
+openpyxl==3.1.2
 
 # ─── Testing ─────────────────────────────────────────────────────
 pytest==8.2.0
 pytest-asyncio==0.23.7
 pytest-cov==5.0.0
-httpx==0.27.0             # TestClient
 factory-boy==3.3.0
 faker==25.2.0
-
-openpyxl==3.1.2
-
-google-play-scraper==1.2.7
