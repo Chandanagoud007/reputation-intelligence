@@ -79,7 +79,7 @@ jobs:
           MONGO_URI=mongodb://repuser:testpassword@localhost:27017/reputation_test?authSource=admin
           MONGO_DB=reputation_test
           REDIS_URL=redis://localhost:6379/0
-          RABBITMQ_URL=amqp://guest:guest@localhost:5672/
+          KAFKA_BOOTSTRAP_SERVERS=localhost:9092
           AWS_REGION=us-east-1
           AWS_ACCESS_KEY_ID=test
           AWS_SECRET_ACCESS_KEY=test
@@ -87,6 +87,7 @@ jobs:
           AWS_SES_SENDER_EMAIL=test@test.com
           ALLOWED_HOSTS=localhost,127.0.0.1
           EOF
+      
 
       - name: Run migrations
         working-directory: backend
