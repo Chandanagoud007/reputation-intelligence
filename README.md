@@ -1,134 +1,135 @@
 # Reputation Intelligence Platform
 
-AI-powered, multi-tenant SaaS platform for ingesting, analyzing, and transforming customer reviews into actionable business intelligence.
+An event-driven, multi-tenant SaaS system that collects customer reviews from across the internet, processes them through an AI pipeline, and delivers live reputation scores, risk alerts, and semantic search through a React dashboard.
 
 ---
 
-## Tech Stack
+## What it does
+
+- Ingests reviews from App Store, Google Play, YouTube, Twitter, Instagram, Facebook, LinkedIn, Trustpilot, Glassdoor, and more
+- Runs every review through normalization, deduplication, sentiment analysis (RoBERTa), topic classification, and risk detection
+- Computes reputation scores per location, updated in real time as reviews flow in
+- Fires configurable alerts when scores drop or risk events are detected
+- Semantic search — find reviews by meaning, not just keywords (powered by Qdrant)
+
+---
+
+## Architecture
+
+```
+Connectors → Ingestion Gateway → Kafka → Normalize → Dedup → Entity Resolve
+→ [Sentiment | Topic | Risk] → Merge → Scoring → Alerts → Dispatch
+                                      ↓           ↓
+                               OpenSearch      ClickHouse
+                               Qdrant          PostgreSQL
+                               MinIO
+```
+
+Every stage is an independent worker. No service talks directly to another — everything flows through Kafka.
+
+---
+
+## Tech stack
 
 | Layer | Technology |
 |---|---|
-| Backend API | Python 3.12 + FastAPI |
-| Relational DB | PostgreSQL 15 (tenants, users, locations) |
-| Document DB | MongoDB 7 (reviews, analytics) |
-| Cache / Sessions | Redis 7 |
-| Message Queue | RabbitMQ 3.13 |
-| AI / Sentiment | AWS Comprehend · Anthropic Claude · VADER (fallback) |
-| Frontend | React 18 + Vite + TypeScript + Tailwind |
-| Monitoring | Prometheus + Grafana + Sentry |
-| Cloud | AWS (ECS/EKS, S3, SES, Comprehend) |
+| Message backbone | Apache Kafka |
+| API | FastAPI + JWT + RBAC |
+| Relational DB | PostgreSQL |
+| Analytics | ClickHouse |
+| Full-text search | OpenSearch |
+| Semantic search | Qdrant |
+| Cache / dedup | Redis |
+| Raw archive | MinIO |
+| Sentiment | RoBERTa + VADER |
+| Summarization | Claude API |
+| Frontend | React + Tailwind CSS |
+| Infrastructure | Docker Compose |
 
 ---
 
-## Quick Start
+## Prerequisites
 
-### Prerequisites
-- Docker Desktop (with Compose v2)
-- Python 3.12+
+- Docker Desktop
+- Python 3.11+
 - Node.js 20+
 
-### 1. Clone & configure
+---
+
+## Quickstart
+
+### 1. Start infrastructure
+
 ```bash
-git clone <repo-url>
-cd reputation-intelligence
-cp .env.example .env
-# Edit .env and fill in your secrets
+cd infrastructure/local
+docker compose up -d
 ```
 
-### 2. One-command setup
+### 2. Backend
+
 ```bash
-chmod +x infrastructure/scripts/setup_dev.sh
-bash infrastructure/scripts/setup_dev.sh
+cd backend
+python -m venv .venv && .venv\Scripts\activate   # Windows
+# or: source .venv/bin/activate                  # Mac/Linux
+
+pip install -r requirements.txt
 ```
 
-### 3. Start everything
+Copy `.env.example` to `.env` and fill in your values (DB, Redis, Kafka URLs are pre-configured for Docker Compose).
+
 ```bash
-docker compose up
+alembic upgrade head
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
+
+### 3. Workers
+
+On Windows, double-click `start_workers.bat`. On Mac/Linux run each worker in a separate terminal:
+
+```bash
+python -m app.services.workers.normalize_worker
+python -m app.services.workers.dedup_worker
+python -m app.services.workers.entity_resolve_worker
+python -m app.services.workers.sentiment_worker
+python -m app.services.workers.topic_worker
+python -m app.services.workers.risk_worker
+python -m app.services.workers.merge_worker
+python -m app.services.workers.scoring_engine
+python -m app.services.workers.alert_engine
+python -m app.services.workers.search_indexer
+python -m app.services.workers.vector_indexer
+python -m app.services.workers.analytics_writer
+```
+
+### 4. Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev -- --host 127.0.0.1
+```
+
+Open **http://127.0.0.1:5173**
 
 ---
 
-## Service URLs (local)
+## Loading review data
+
+```bash
+python -m app.scripts.bulk_loader --file reviews.json --brand "Brand Name" --rate 50
+```
+
+Supports: App Store, Google Play, YouTube, Twitter, Instagram, Facebook, LinkedIn.
+
+---
+
+## Service URLs
 
 | Service | URL |
 |---|---|
-| Backend API | http://localhost:8000 |
-| API Docs (Swagger) | http://localhost:8000/api/docs |
-| Frontend | http://localhost:3000 |
-| RabbitMQ Management | http://localhost:15672 |
-| Grafana | http://localhost:3001 |
-| Prometheus | http://localhost:9090 |
-
----
-
-## Project Structure
-
-```
-reputation-intelligence/
-├── backend/                  # FastAPI application
-│   ├── app/
-│   │   ├── api/v1/           # Route handlers
-│   │   ├── core/             # Config, database connections
-│   │   ├── middleware/        # Tenant isolation, logging
-│   │   ├── models/           # SQLAlchemy models (PG)
-│   │   ├── schemas/          # Pydantic request/response schemas
-│   │   ├── services/
-│   │   │   ├── connectors/   # Google, Yelp, TripAdvisor ingestion
-│   │   │   ├── nlp/          # Sentiment, emotion, topic analysis
-│   │   │   └── analytics/    # Aggregation and metrics
-│   │   └── utils/
-│   ├── requirements.txt
-│   └── Dockerfile
-├── frontend/                 # React + Vite SPA
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── store/            # Redux slices
-│   │   └── services/         # API client
-│   └── Dockerfile
-├── infrastructure/
-│   ├── docker/               # Service init configs
-│   ├── scripts/              # Dev setup scripts
-│   ├── k8s/                  # Kubernetes manifests
-│   └── terraform/            # AWS IaC
-├── ml/                       # ML model training & inference
-├── docker-compose.yml
-├── .env.example
-└── README.md
-```
-
----
-
-## Development Workflow
-
-```bash
-# Backend (with hot reload)
-cd backend
-source .venv/bin/activate
-uvicorn app.main:app --reload
-
-# Frontend (with hot reload)
-cd frontend
-npm run dev
-
-# Run tests
-cd backend && pytest
-cd frontend && npm test
-
-# DB migrations
-cd backend
-alembic revision --autogenerate -m "description"
-alembic upgrade head
-```
-
----
-
-## Phase Roadmap
-
-| Phase | Focus 
-|---|---|---|
-| 1 | Foundation & Architecture 
-| 2 | Platform Connectivity & Ingestion
-| 3 | Intelligence & Analytics Layer
-| 4 | Dashboards, Alerts & RBAC
-| 5 | Stabilization, Reporting & Launch
+| Dashboard | http://127.0.0.1:5173 |
+| API docs | http://127.0.0.1:8000/api/docs |
+| Kafka UI | http://localhost:8080 |
+| Qdrant UI | http://localhost:6333/dashboard |
+| MinIO Console | http://localhost:9001 |
+| OpenSearch | http://localhost:5601 |
